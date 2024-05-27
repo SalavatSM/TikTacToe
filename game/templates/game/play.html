@@ -1,0 +1,83 @@
+<!-- game/templates/game/play.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Игра "Крестики-нолики"</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.3/css/bulma.min.css">
+    <style>
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            background-color: #f0f0f0;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <h1 class="title">Игра "Крестики-нолики"</h1>
+            <div class="board" id="board">
+                {% for cell in request.session.board %}
+                    <div class="cell" data-position="{{ forloop.counter0 }}">{{ cell }}</div>
+                {% endfor %}
+            </div>
+            <button class="button is-primary" id="reset-button">Начать заново</button>
+            <div class="notification is-hidden" id="winner-notification"></div>
+        </div>
+    </section>
+    <script>
+        document.querySelectorAll('.cell').forEach(cell => {
+            cell.addEventListener('click', () => {
+                const position = cell.getAttribute('data-position');
+                fetch('/move/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: new URLSearchParams({
+                        'position': position
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'move') {
+                        cell.innerText = data.board[position];
+                    } else if (data.status === 'win') {
+                        document.querySelector('#winner-notification').innerText = `Победитель: ${data.winner}`;
+                        document.querySelector('#winner-notification').classList.remove('is-hidden');
+                    } else if (data.status === 'draw') {
+                        document.querySelector('#winner-notification').innerText = `Ничья`;
+                        document.querySelector('#winner-notification').classList.remove('is-hidden');
+                    }
+                });
+            });
+        });
+
+        document.querySelector('#reset-button').addEventListener('click', () => {
+            fetch('/reset/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            }).then(() => {
+                window.location.reload();
+            });
+        });
+    </script>
+</body>
+</html>
